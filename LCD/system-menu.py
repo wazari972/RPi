@@ -4,52 +4,38 @@
 
 from time import sleep
 from CharPlate import CharPlate
-from LCDMenu.menu import Menu
+from LCDMenu.menu import Element, Menu
 
 lcd = CharPlate()
-menu = Menu()
+menu = Menu(lcd, lcd.TEAL)
 
-#The menu can show strings, bash and python expressions
+# The menu can show strings, bash and python expressions
 
-# topElement( Name , Type of content , Lower row content)
+network = Element(menu, "Network")
+net_ip = Element(network, "IP", Menu.BASH, "/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}'")
 
-network = menu.topElement("< Network >", "STRING", " v")
-net_ip = menu.subElement("Network>IP", "BASH", "ping -c 1 $(ip r | grep default | cut -d ' ' -f 3) | grep from | cut -d' ' -f4 | cut -d: -f 1")
+system = Element(menu, "System")
+sys_cpu = Element(system, "CPU", Menu.PYTHON, 'str(str(psutil.cpu_percent()) + "%")')
+sys_tmp = Element(system, "CPU-Temp.", Menu.BASH, "cat /sys/class/thermal/thermal_zone0/temp | cut -b-2")
+sys_ram = Element(system, "RAM", Menu.PYTHON, 'str(str(psutil.phymem_usage()[3])+"% used")')
 
-system = menu.topElement("< System >", "STRING", " v")
-sys_cpu = menu.subElement("System>CPU", "PYTHON", 'str(str(psutil.cpu_percent()) + "%")')
-sys_tmp = menu.subElement("System>CPU-Temp.", "BASH", "cat /sys/class/thermal/thermal_zone0/temp | cut -b-2")
-sys_ram = menu.subElement("System>RAM", "PYTHON", 'str(str(psutil.phymem_usage()[3])+"% used")')
+radio = Element(menu, "Radio", color=lcd.GREEN)
+radio_reggae = Element(radio, "Grosse Radio", Menu.STRING, 'http://hd.lagrosseradio.info:8300/', once=True, confirm=True)
 
-radio = menu.topElement("< Radio >", "STRING", " v (todo)", lcd.GREEN)
-radio_reggae = menu.subElement("Radio>Grosse Radio", "STRING", 'http://hd.lagrosseradio.info:8300/')
-
-power = menu.topElement("< Power Off >", "STRING", " v", lcd.RED)
-power_off = menu.subElement("Power>Off", "BASH", 'sudo poweroff')
-
-#Adding elements to the menu
-for top, subs in ((radio, [radio_reggae]),
-                  (network, [net_ip]),
-                  (system, [sys_cpu, sys_tmp, sys_ram]),
-                  (power, [power_off])):
-    menu.addTopElement(top)
-    for subel in subs:
-        menu.addSubElement(top, subel)
-
-color = lcd.TEAL
+power = Element(menu, "Power", color=lcd.RED)
+power_off = Element(power, "Off", Menu.BASH, 'echo sudo poweroff', confirm=True)
 
 #initializing display
 lcd.begin(16, 2)
-lcd.clear()
-lcd.backlight(color)
+lcd.backlight(lcd.TEAL)
 
 #little loading animation
 i = 0
 lcd.message("LOADING\n")
 while(i < 16):
-    lcd.message(chr(219))
+    lcd.message("+")
     sleep(.1)
     i += 1
 
 #starting the menu
-menu.startMenu(lcd, color)
+menu.startMenu()

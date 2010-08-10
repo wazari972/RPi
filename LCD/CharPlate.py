@@ -97,22 +97,22 @@ class ConsoleCharPlate:
         try:
             line = self.fifo.read()
             for l in line[:-1].split("\n"):
-                if l in ("up", "u", "^[[A", "8"):
+                if l in ("up", "u", "^[[A", "8", "^[OA"):
                     self.buttons[ConsoleCharPlate.UP] = True
-                elif l in ("down", "d", "^[[B", "2"):
+                elif l in ("down", "d", "^[[B", "2", "^[OB"):
                     self.buttons[ConsoleCharPlate.DOWN] = True
-                elif l in ("left", "l", "^[[D", "4"):
+                elif l in ("left", "l", "^[[D", "4", "^[OB"):
                     self.buttons[ConsoleCharPlate.LEFT] = True
-                elif l in ("right", "r", "^[[C", "6"):
+                elif l in ("right", "r", "^[[C", "6", "^[OC"):
                     self.buttons[ConsoleCharPlate.RIGHT] = True
                 elif l in ("select", "s", " ", "5"):
                     self.buttons[ConsoleCharPlate.SELECT] = True
-                
         except:
             pass
 
         if self.buttons[b]:
             self.buttons[b] = False
+            
             return True
         else:
             return False
@@ -133,8 +133,10 @@ class ConsoleCharPlate:
 
     def display(self):
         self.clear()
-        
+
+CharPlate = None
 try:
-    from Adafruit.CharLCDPlate import Adafruit_CharLCDPlate as CharPlate
-except:
+    from Adafruit.Adafruit_CharLCDPlate import Adafruit_CharLCDPlate as CharPlate
+except Exception as e:
+     print e
      CharPlate = ConsoleCharPlate

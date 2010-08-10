@@ -4,210 +4,182 @@ from time import sleep
 import commands
 import psutil
 
+COLUMNS = 16
+
+class Element:
+    def __init__(self, parent, name, type_=Menu.STRING, once=False, content=None, color=None, confirm=False):
+        self.parent = parent
+        self.name = name
+        self.type = type_
+        self.content = content
+        self.color = color
+        self.once = once
+        self.execution_msg = None
+        self.confirm = confirm
+        self.children = []
+
+        self.isTop = not isinstance(parent, Element)
+
+        if self.isTop:
+            prev = (COLUMNS - 2 - len(name)) / 2
+            after = prev if 2 * prev == COLUMNS else prev + 1
+            self.longName = "<%s%s%s>" % (" " * prev, name, " " * after)
+        else:
+            self.longName = "%s>%s" % (self.parent.name, self.name)
+        
+        if not self.content:
+            prev = (COLUMNS - 2 - 1) / 2
+            after = prev if 2 * prev == COLUMNS else prev + 1
+            self.content = "%sV%s" % (" " * prev, " " * after)
+            
+        self.parent.declareChild(self)
+
+    def declareChild(self, child):
+        self.children.append(child)
+
 class Menu():
-    menu = list()
-    top = 0
-    sub = 0
-    count = 1000
-    element = None
-    isInterrupted = False
-    isOn = True
-    isOnCount = 0
-    stepScroll = 0
-    defaultColor = None
+    STRING = "STRING"
+    PYTHON = "PYTHON"
+    BASH = "BASH"
     
-    def topElement(self, name, type, content, color=None):
-        subList = list()
-	sEl = self.subElement(name,type,content)
-	subList.append(sEl)
-        return {
-                "Name"        : name,
-                "Sub"         : subList,
-		"Type"	      : type,
-                "Content"     : content,
-                "Color"     : color}
+    def __init__(self, lcd, defaultColor):
+        self.lcd = lcd
+        self.isInterrupted = False
+        self.isOn = True
+        self.isOnCount = 0
+        self.defaultColor = defaultColor
+        
+        self.currentElement = None
+        self.children = []
 
-    def subElement(self, name, type, content, color=None):
-        return {
-                "Name"        : name,
-		"Type"        : type,
-                "Content"     : content,
-                "Color"       : color}
+    def declareChild(self, child):
+        self.children.append(child)
 	
-    def buttonPressed(self, lcd):
-        boo = False
-        if (lcd.buttonPressed(lcd.SELECT) | lcd.buttonPressed(lcd.UP) | lcd.buttonPressed(lcd.DOWN) | lcd.buttonPressed(lcd.LEFT) | lcd.buttonPressed(lcd.RIGHT)):
-            boo = True
-        return boo
+    def buttonPressed(self):
+        return (self.lcd.buttonPressed(self.lcd.SELECT) or
+                self.lcd.buttonPressed(self.lcd.UP)     or
+                self.lcd.buttonPressed(self.lcd.DOWN)   or
+                self.lcd.buttonPressed(self.lcd.LEFT)   or
+                self.lcd.buttonPressed(self.lcd.RIGHT))
 
-    def clearMenuRight(self, lcd):
-        j = 0
-        while(j < 16):
-            lcd.scrollDisplayRight()
+    def __clearMenuSide(self, right=True):
+        for i in xrange(16):
+            if right: self.lcd.scrollDisplayRight()
+            else: self.lcd.scrollDisplayLeft()
             sleep(.03)
-            j += 1
 
-    def clearMenuLeft(self, lcd):
-        i = 0
-        while(i < 16):
-            lcd.scrollDisplayLeft()
-            sleep(.03)
-            i += 1
-
-    def returnToTopElement(self):
-        global element
-	self.sub = 0
-	self.element = self.menu[self.top]
+    def __returnToTopElement(self):
+        while self.currentElement.parent != self:
+            self.currentElement = self.currentElement.parent
 		
-    def firstTopElement(self):
-	global element
-        self.top = 0
-        self.sub = 0
-	self.element = self.menu[self.top]
-        return self.element
+    def __firstTopElement(self):
+        self.currentElement = self.children[0]
 
-    def addTopElement(self, topEl):
-        if not topEl in self.menu:
-            self.menu.append(topEl)
+    def __nextPrevTopElement(self, do_next):
+	self.__returnToTopElement()
+        currentIndex = self.children.index(self.currentElement)
+        inc = 1 if do_next else -1
+        newIndex = (len(self.children) + currentIndex + inc) % len(self.children)
+        self.currentElement = self.children[newIndex]
 
-    def addSubElement(self, topEl, subEl):
-        if not subEl in topEl["Sub"]:
-            topEl["Sub"].append(subEl)
-
-    def returnElement():
-	global element
-	return self.element
-
-    def nextTopElement(self, lcd):
-	global element
-	global count
-	self.clearMenuLeft(lcd)
-	self.count = 1000
-        if len(self.menu) > 0:
-            self.top = (self.top + 1) % len(self.menu)
-            self.sub = 0
-	    self.element = self.menu[self.top]
-	self.handleMenu(lcd)
-
-    def prevTopElement(self, lcd):
-	global element
-	global count
-	self.clearMenuRight(lcd)
-	self.count = 1000
-        if len(self.menu) > 0:
-            self.top -= 1
-            self.sub  = 0
-            if self.top < 0:
-                self.top = len(self.menu)-1
-	    self.element = self.menu[self.top]
-	self.handleMenu(lcd)
-
-    def nextSubElement(self, lcd):
-	global element
-	global count
-        topEl = self.menu[self.top]
-	self.count = 1000
-        if (len(topEl["Sub"]) > 0):
-            self.sub += 1
-            if (self.sub >= len(topEl["Sub"])):
-                self.sub = 0
-            self.element = topEl["Sub"][self.sub]
-	self.handleMenu(lcd)
-
-    def prevSubElement(self, lcd):
-	global element
-	global count
-        topEl = self.menu[self.top]
-	self.count = 1000
-        if (len(topEl["Sub"]) > 0):
-            self.sub -= 1
-            if (self.sub  < 0):
-                self.sub = len(topEl["Sub"])-1
-            self.element = topEl["Sub"][self.sub]
-	self.handleMenu(lcd)
-
-    def handleMenu(self,lcd):
-	global element
-	global count
-	global isOn
-        global defaultColor
+    def __nextTopElement(self):
+        self.__nextPrevTopElement(do_next=True)
         
-	msg = ""
-	if (self.count > 10) & self.isOn:
-	    if self.element["Type"] == "STRING":
-	        msg = self.element["Content"]
-	    elif self.element["Type"] == "PYTHON":
-		msg = str(eval(self.element["Content"]))
-	    elif self.element["Type"] == "BASH":
-	        msg = commands.getoutput(self.element["Content"])
-	    self.count = 0
-	    lcd.clear()
-	    lcd.message(self.element["Name"]+"\n"+msg)
-            lcd.backlight(self.element["Color"] if self.element["Color"] else defaultColor)
-	self.count += 1
+    def __prevTopElement(self):
+        self.__nextPrevTopElement(do_next=False)
 
-    def startMenu(self, lcd, color):
-	global isInterrupted
-	global isOn
-	global isOnCount
-        global defaultColor
+    def __nextPrevSubElement(self, do_next):
+        if self.currentElement.parent == self:
+            self.currentElement = self.currentElement.children[0]
+            return
 
-        lcd.clear()
-	lcd.backlight(color)
+        subelements = self.currentElement.parent.children
+        currentIndex = subelements.index(self.currentElement)
+        inc = 1 if do_next else -1
+        newIndex = currentIndex + inc
         
-	selfisOnCount = 0
-        defaultColor = color
-	self.firstTopElement()
-	self.handleMenu(lcd)
+        if newIndex in (0, len(subelements)):
+            self.__returnToTopElement()
+            return
+        self.currentElement = subelements[newIndex]
+
+    def __nextSubElement(self):
+        self.__nextPrevSubElement(do_next=True)
+        
+    def __prevSubElement(self):
+        self.__nextPrevSubElement(do_next=False)
+
+    def __handleMenu(self):
+	if self.isOn:
+            if not self.once or not self.execution_msg:
+                if self.currentElement.type == "STRING":
+                    msg = self.currentElement.content
+                elif self.currentElement.type == "PYTHON":
+                    msg = str(eval(self.currentElement.content))
+                elif self.currentElement.type == "BASH":
+                    msg = commands.getoutput(self.currentElement.content)
+
+                if self.once:
+                    self.execution_msg = msg
+
+            if self.once:
+                msg = self.execution_msg
+                    
+	    self.lcd.clear()
+            
+            name = self.currentElement.longName
+	    self.lcd.message(name + "\n" + msg)
+            self.lcd.backlight(self.currentElement.color if self.currentElement.color else self.defaultColor)
+
+    def startMenu(self):
+        self.lcd.clear()
+	self.lcd.backlight(self.defaultColor)
+        
 	self.isOn = True
 	self.isOnCount = 0
 	self.isInterrupted = False
+
+        self.__firstTopElement()
+	self.__handleMenu()
+        
 	while not self.isInterrupted:
 	    try:
-    		if self.isOn == True:
-        		if lcd.buttonPressed(lcd.RIGHT):
-                		self.nextTopElement(lcd)
-                		self.isOnCount = 0
-                		sleep(.3)
-       			if lcd.buttonPressed(lcd.LEFT):
-                		self.prevTopElement(lcd)
-                		self.isOnCount = 0
-                		sleep(.3)
-        		if lcd.buttonPressed(lcd.DOWN):
-                		self.nextSubElement(lcd)
-                		self.isOnCount = 0
-                		sleep(.3)
-        		if lcd.buttonPressed(lcd.UP):
-                		self.prevSubElement(lcd)
-               			self.isOnCount = 0
-                		sleep(.3)
-			if lcd.buttonPressed(lcd.SELECT):
-                		self.returnToTopElement()
-               			self.isOnCount = 0
-                		sleep(.3)
-        		if self.isOnCount > 100:
-                		lcd.backlight(lcd.OFF)
-                		lcd.noDisplay()
-                		self.isOnCount = 0
-                		self.isOn = False
-                		sleep(.3)
+    		if self.isOn:
+                    if self.buttonPressed():
+                        self.isOnCount = 0
+                        if self.lcd.buttonPressed(self.lcd.RIGHT):
+                            self.__nextTopElement()
+                        elif self.lcd.buttonPressed(self.lcd.LEFT):
+                            self.__prevTopElement()
+                        elif self.lcd.buttonPressed(self.lcd.DOWN):
+                            self.__nextSubElement()
+                        elif self.lcd.buttonPressed(self.lcd.UP):
+                            self.__prevSubElement()
+                        elif self.lcd.buttonPressed(self.lcd.SELECT):
+                            self.__returnToTopElement()
 
+                    self.__handleMenu()
+                    self.isOnCount += 1
+                    
+                    if self.isOnCount > 100:
+                        self.lcd.backlight(self.lcd.OFF)
+                        self.lcd.noDisplay()
+                        self.isOn = False
+                    
+                    sleep(.3)
     		else:
-       			if self.buttonPressed(lcd):
-             	            lcd.display()
-            		    lcd.backlight(color)
-            		    self.isOnCount = 0
-            		    self.isOn = True
-           		    self.handleMenu(lcd)
-            		    sleep(.3)
-    		self.handleMenu(lcd)
-    		sleep(.1)
-    		self.isOnCount += 1
+                    if self.buttonPressed():
+                        self.lcd.display()
+                        self.lcd.backlight(self.defaultColor)
+                        self.isOnCount = 0
+                        self.isOn = True
+                        sleep(.3)
+                        
 	    except KeyboardInterrupt:
-		self.stopMenu(lcd)
-    def stopMenu(self, lcd):
-	global isInterrupted
-	lcd.backlight(lcd.OFF)
-	lcd.noDisplay()
+		self.stopMenu()
+                
+    def stopMenu(self):
+	self.lcd.backlight(self.lcd.OFF)
+	self.lcd.noDisplay()
 	self.isInterrupted = True
 
