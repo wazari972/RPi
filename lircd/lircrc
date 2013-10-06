@@ -1,0 +1,28 @@
+begin
+button = mouse_left_btn
+prog   = irexec
+repeat = 0
+config = sshfs kevin-desktop:raspberry ~/mount
+end
+
+begin
+button = mouse_right_btn
+prog   = irexec
+repeat = 0
+config = fusermount -u ~/mount
+end
+
+begin
+button = power
+prog   = irexec
+repeat = 0
+config = sudo poweroff
+end
+
+begin
+button = info
+prog   = irexec
+repeat = 0
+config = aplay /etc/ready.wav
+end
+
