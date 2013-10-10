@@ -78,18 +78,6 @@ class Menu():
 	global element
 	return self.element
 
-    def scroll(self, lcd, msg):
-	global count
-	global stepScroll
-        if len(msg) > 16:
-	    self.stepScroll = len(msg) - 16
-	    if self.count <= 10 & self.stepScroll <= 0:
-		lcd.scrollDisplayLeft()
-		self.stepScroll -= 1
-	    if self.count > 10:
-		print "la"		
-		    
-
     def nextTopElement(self, lcd):
 	global element
 	global count
@@ -156,7 +144,6 @@ class Menu():
 	    lcd.clear()
 	    lcd.message(self.element["Name"]+"\n"+msg)
             lcd.backlight(self.element["Color"] if self.element["Color"] else defaultColor)
-	    self.scroll(lcd, msg)
 	self.count += 1
 
     def startMenu(self, lcd, color):
@@ -197,7 +184,6 @@ class Menu():
 			if lcd.buttonPressed(lcd.SELECT):
                 		self.returnToTopElement()
                			self.isOnCount = 0
-				print "s"
                 		sleep(.3)
         		if self.isOnCount > 100:
                 		lcd.backlight(lcd.OFF)

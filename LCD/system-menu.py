@@ -28,7 +28,7 @@ power = menu.topElement("< Power Off >", "STRING", " v", lcd.RED)
 power_off = menu.subElement("Power>Off", "BASH", 'sudo poweroff')
 
 #Adding elements to the menu
-for top, subs in ((radio, ()),
+for top, subs in ((radio, [radio_reggae]),
                   (network, [net_ip]),
                   (system, [sys_cpu, sys_tmp, sys_ram]),
                   (power, [power_off])):
@@ -39,6 +39,7 @@ for top, subs in ((radio, ()),
 color = lcd.TEAL
 
 #initializing display
+lcd.begin(16, 2)
 lcd.clear()
 lcd.backlight(color)
 
