@@ -2,7 +2,7 @@
 
 import sys
 
-from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
+from Adafruit.CharLCDPlate import Adafruit_CharLCDPlate
 
 lcd = Adafruit_CharLCDPlate()
 
