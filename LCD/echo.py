@@ -1,15 +1,14 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 import sys
 
-from Adafruit.CharLCDPlate import Adafruit_CharLCDPlate
+from CharPlate import CharPlate
 
-lcd = Adafruit_CharLCDPlate(debug=True)
+lcd = CharPlate(debug=True)
 lcd.begin(16, 2)
 #lcd.clear()
 
 message = sys.argv[1] + "\n" + sys.argv[2]
-print message
 lcd.message(message)
 
 col = (('Red' , lcd.RED) , ('Yellow', lcd.YELLOW), ('Green' , lcd.GREEN),
@@ -20,7 +19,8 @@ col = (('Red' , lcd.RED) , ('Yellow', lcd.YELLOW), ('Green' , lcd.GREEN),
 try:
   color = col[int(sys.argv[1])]
   lcd.backlight(color[1])
-  print color[0]
 except:
   lcd.backlight(lcd.ON)
 
+
+  

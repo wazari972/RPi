@@ -1,6 +1,5 @@
 #Daniel Juenger, github.com/sleeepyjack
 
-import Adafruit.CharLCDPlate
 from time import sleep
 import commands
 import psutil

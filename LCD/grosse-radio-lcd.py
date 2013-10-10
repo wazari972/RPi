@@ -1,13 +1,15 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 from lxml.html import html5parser
 from httplib2 import Http
 from time import sleep
 import time
 
-from Adafruit.CharLCDPlate import Adafruit_CharLCDPlate
+from CharPlate import CharPlate
 
 URL = "http://www.lagrosseradio.com/playerLGR/ajax_player.php?id_radio=3"
+SLEEP = 10
+
 h = Http("")
 
 def getNameTitle():
@@ -20,10 +22,11 @@ def getNameTitle():
     return name, title
 
 
-lcd = Adafruit_CharLCDPlate(busnum = 1)
+lcd = CharPlate(busnum = 1)
 lcd.begin(16, 2)
 lcd.clear()
 
+count = 0
 old = None
 message = "Loading"
 while 1:
@@ -34,23 +37,24 @@ while 1:
     message = "\n".join(getNameTitle())
     
     lcd.clear()
-    lcd.message(message)
 
     if message != old:
-	lcd.backlight(lcd.YELLOW)
-        print message
-        print "----"
+        lcd.backlight(lcd.YELLOW)
+        count = 0
     else:
-	lcd.backlight(lcd.OFF)
-    old = message
+        lcd.backlight(lcd.OFF)
 
-    for i in range(30):
-        if lcd.buttonPressed(lcd.SELECT) or lcd.buttonPressed(lcd.UP) :
+    lcd.message(message)
+    
+    old = message
+    
+    for i in range(SLEEP):
+        if lcd.buttonPressed(lcd.SELECT) or lcd.buttonPressed(lcd.UP):
             lcd.clear()
-            lcd.message(message)
             lcd.backlight(lcd.ON)
         elif lcd.buttonPressed(lcd.DOWN):
             lcd.clear()
-            lcd.message(message)
             lcd.backlight(lcd.OFF)
+        count += 1
+        lcd.message(str(count) + "s "+ message)
         sleep(1)

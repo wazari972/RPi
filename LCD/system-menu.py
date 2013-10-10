@@ -1,12 +1,12 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 #Daniel Juenger, github.com/sleeepyjack
 
 from time import sleep
-from Adafruit.CharLCDPlate import Adafruit_CharLCDPlate
+from CharPlate import CharPlate
 from LCDMenu.menu import Menu
 
-lcd = Adafruit_CharLCDPlate()
+lcd = CharPlate()
 menu = Menu()
 
 #The menu can show strings, bash and python expressions
@@ -32,11 +32,8 @@ for top, subs in ((radio, ()),
                   (network, [net_ip]),
                   (system, [sys_cpu, sys_tmp, sys_ram]),
                   (power, [power_off])):
-    print "add %s" % top["Name"]
     menu.addTopElement(top)
     for subel in subs:
-        print "\tadd %s" % subel["Name"]
-        print "\ttype %s" % subel["Type"]
         menu.addSubElement(top, subel)
 
 color = lcd.TEAL
